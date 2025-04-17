@@ -68,23 +68,43 @@ def update_spreadsheet(spreadsheet_id, date, follower_count):
     print(f"{date}のフォロワー数({follower_count})を記録しました。")
 
 def main():
-    # 環境変数から値を取得
-    instagram_username = os.environ.get('INSTAGRAM_USERNAME')
-    instagram_login_user = os.environ.get('INSTAGRAM_LOGIN_USER')
-    instagram_login_password = os.environ.get('INSTAGRAM_LOGIN_PASSWORD')
-    spreadsheet_id = os.environ.get('SPREADSHEET_ID')
+    try:
+        # 環境変数から値を取得
+        instagram_username = os.environ.get('INSTAGRAM_USERNAME')
+        instagram_login_user = os.environ.get('INSTAGRAM_LOGIN_USER')
+        instagram_login_password = os.environ.get('INSTAGRAM_LOGIN_PASSWORD')
+        spreadsheet_id = os.environ.get('SPREADSHEET_ID')
+        
+        # デバッグ情報をログに記録（パスワードは表示しない）
+        print(f"対象アカウント: {instagram_username}")
+        print(f"ログインアカウント: {instagram_login_user}")
+        print(f"スプレッドシートID: {spreadsheet_id}")
+        
+        # 今日の日付を取得
+        today = datetime.datetime.now().strftime('%Y-%m-%d')
+        print(f"実行日: {today}")
+        
+        # フォロワー数を取得
+        follower_count = get_follower_count(instagram_username, instagram_login_user, instagram_login_password)
+        
+        if follower_count is not None:
+            print(f"フォロワー数取得成功: {follower_count}")
+            # スプレッドシートを更新
+            update_spreadsheet(spreadsheet_id, today, follower_count)
+        else:
+            print("フォロワー数の取得に失敗しました。エラーとして記録します。")
+            # エラーをスプレッドシートに記録
+            update_spreadsheet(spreadsheet_id, today, "取得失敗")
     
-    # 今日の日付を取得
-    today = datetime.datetime.now().strftime('%Y-%m-%d')
-    
-    # フォロワー数を取得
-    follower_count = get_follower_count(instagram_username, instagram_login_user, instagram_login_password)
-    
-    if follower_count is not None:
-        # スプレッドシートを更新
-        update_spreadsheet(spreadsheet_id, today, follower_count)
-    else:
-        print("フォロワー数の取得に失敗しました。")
+    except Exception as e:
+        print(f"予期せぬエラーが発生しました: {e}")
+        # 可能であればエラーもスプレッドシートに記録
+        try:
+            today = datetime.datetime.now().strftime('%Y-%m-%d')
+            spreadsheet_id = os.environ.get('SPREADSHEET_ID')
+            update_spreadsheet(spreadsheet_id, today, f"エラー: {str(e)}")
+        except:
+            print("エラー情報の記録にも失敗しました")
 
 if __name__ == "__main__":
     main()
