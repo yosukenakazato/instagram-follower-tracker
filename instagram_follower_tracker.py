@@ -1,20 +1,20 @@
 import os
 import datetime
-import instaloader
+import instagrapi
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 
 def get_follower_count(username, login_user, login_password):
     """インスタグラムのフォロワー数を取得する関数"""
-    # Instaloaderのインスタンスを作成
-    L = instaloader.Instaloader()
+    # instagrapiのインスタンスを作成
+    L = instagrapi.instagrapi()
     
     try:
         # ログイン
         L.login(login_user, login_password)
         
         # プロフィール情報を取得
-        profile = instaloader.Profile.from_username(L.context, username)
+        profile = instagrapi.Profile.from_username(L.context, username)
         
         # フォロワー数を取得
         follower_count = profile.followers
