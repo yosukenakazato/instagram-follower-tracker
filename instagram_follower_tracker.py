@@ -1,23 +1,41 @@
 import os
 import datetime
-import instagrapi
+from instagrapi import Client
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 
 def get_follower_count(username, login_user, login_password):
     """インスタグラムのフォロワー数を取得する関数"""
-    # instagrapiのインスタンスを作成
-    L = instagrapi.instagrapi()
+    # instagrapiのClientインスタンスを作成
+    cl = Client()
     
     try:
-        # ログイン
-        L.login(login_user, login_password)
+        # セッションファイルのパスを設定
+        session_file = "instagram_session.json"
         
-        # プロフィール情報を取得
-        profile = instagrapi.Profile.from_username(L.context, username)
+        # セッションファイルが存在する場合は読み込む
+        try:
+            cl.load_settings(session_file)
+            print("保存されたセッションを読み込みました")
+        except:
+            print("新規セッションを開始します")
+        
+        # ログインを試みる
+        try:
+            cl.login(login_user, login_password)
+            print("ログイン成功")
+            # セッションを保存
+            cl.dump_settings(session_file)
+        except Exception as e:
+            print(f"ログインエラー: {e}")
+            return None
+        
+        # ユーザー情報を取得
+        user_id = cl.user_id_from_username(username)
+        user_info = cl.user_info(user_id)
         
         # フォロワー数を取得
-        follower_count = profile.followers
+        follower_count = user_info.follower_count
         
         return follower_count
     
