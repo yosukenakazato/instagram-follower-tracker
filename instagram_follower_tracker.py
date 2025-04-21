@@ -1,44 +1,61 @@
 import os
+import re
+import json
 import datetime
-from instagrapi import Client
+import requests
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 
-def get_follower_count(username, login_user, login_password):
-    """インスタグラムのフォロワー数を取得する関数"""
-    # instagrapiのClientインスタンスを作成
-    cl = Client()
-    
+def get_follower_count(username):
+    """インスタグラムのフォロワー数を取得する関数（単純なHTTPリクエスト）"""
     try:
-        # セッションファイルのパスを設定
-        session_file = "instagram_session.json"
+        # インスタグラムのユーザープロフィールページにアクセス
+        url = f"https://www.instagram.com/{username}/"
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.110 Safari/537.36'
+        }
         
-        # セッションファイルが存在する場合は読み込む
-        try:
-            cl.load_settings(session_file)
-            print("保存されたセッションを読み込みました")
-        except:
-            print("新規セッションを開始します")
+        response = requests.get(url, headers=headers)
         
-        # ログインを試みる
-        try:
-            cl.login(login_user, login_password)
-            print("ログイン成功")
-            # セッションを保存
-            cl.dump_settings(session_file)
-        except Exception as e:
-            print(f"ログインエラー: {e}")
+        if response.status_code != 200:
+            print(f"ページの取得に失敗しました。ステータスコード: {response.status_code}")
             return None
+            
+        # ページのHTMLから共有データを抽出
+        shared_data_match = re.search(r'<script type="application/json" data-sjs>({.*?})</script>', response.text)
+        
+        if not shared_data_match:
+            print("プロフィールデータが見つかりませんでした")
+            return None
+            
+        json_data = json.loads(shared_data_match.group(1))
         
         # ユーザー情報を取得
-        user_id = cl.user_id_from_username(username)
-        user_info = cl.user_info(user_id)
+        user_data = None
+        
+        # JSONの構造をナビゲートしてユーザーデータを探す
+        try:
+            for key, val in json_data.items():
+                if isinstance(val, dict) and 'user' in val:
+                    if 'user' in val and val['user'] and 'edge_followed_by' in val['user']:
+                        user_data = val['user']
+                        break
+        except Exception as e:
+            print(f"ユーザーデータの解析に失敗: {e}")
+            
+        if not user_data:
+            print("ユーザーデータが見つかりませんでした")
+            return None
         
         # フォロワー数を取得
-        follower_count = user_info.follower_count
+        follower_count = user_data.get('edge_followed_by', {}).get('count')
         
+        if follower_count is None:
+            print("フォロワー数が見つかりませんでした")
+            return None
+            
         return follower_count
-    
+        
     except Exception as e:
         print(f"エラーが発生しました: {e}")
         return None
@@ -89,13 +106,10 @@ def main():
     try:
         # 環境変数から値を取得
         instagram_username = os.environ.get('INSTAGRAM_USERNAME')
-        instagram_login_user = os.environ.get('INSTAGRAM_LOGIN_USER')
-        instagram_login_password = os.environ.get('INSTAGRAM_LOGIN_PASSWORD')
         spreadsheet_id = os.environ.get('SPREADSHEET_ID')
         
-        # デバッグ情報をログに記録（パスワードは表示しない）
+        # デバッグ情報をログに記録
         print(f"対象アカウント: {instagram_username}")
-        print(f"ログインアカウント: {instagram_login_user}")
         print(f"スプレッドシートID: {spreadsheet_id}")
         
         # 今日の日付を取得
@@ -103,7 +117,7 @@ def main():
         print(f"実行日: {today}")
         
         # フォロワー数を取得
-        follower_count = get_follower_count(instagram_username, instagram_login_user, instagram_login_password)
+        follower_count = get_follower_count(instagram_username)
         
         if follower_count is not None:
             print(f"フォロワー数取得成功: {follower_count}")
