@@ -1,6 +1,5 @@
-instagrapi
+requests
 google-auth
 google-auth-oauthlib
 google-auth-httplib2
 google-api-python-client
-Pillow>=8.1.1
